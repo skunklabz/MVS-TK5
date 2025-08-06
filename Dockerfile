@@ -1,33 +1,39 @@
 # *********************************************************************
-# Run TK4- (MVS 3.8j) in Docker container
+# Run TK5 (MVS 3.8j) in Docker container
 # *********************************************************************
 #
-# Use SDL Hercules 4.5 as base container
+# Use Ubuntu 22.04 as a base and install Hercules
 #
-FROM praths/sdl-hercules-390:latest
+FROM ubuntu:22.04
+
+# Install Hercules and its dependencies
+RUN apt-get update && apt-get install -y hercules
+
 #
-# Set environment
+# Set some environment variables
 #
-ARG HERCULES=/opt/hercules
-ARG TK5=/opt/tk5
+ENV HERCULES_RC         /opt/hercules/hercules.rc
+ENV HERCULES_CNF        /opt/hercules/hercules.cnf
+ENV HERCULES_LOG        /opt/hercules/hercules.log
+ENV TK5                 /opt/tk5
+
 #
-# Copy TK5 and Hercules
+# Get the TK5 system
 #
 COPY ./mvs-tk5 $TK5
-RUN mkdir -p $TK5/hercules
+
 #
 # Make Hercules web Interface available inside TK4- as reference by
-# the default configuration scripts
+# hercules.cnf
 #
-RUN ln -s $HERCULES/share/hercules $TK5/hercules/httproot
+RUN ln -s /usr/share/hercules/ /opt/hercules/
+
 #
-# Make required Ports available
+# Expose ports for 3270 and the web interface
 #
-EXPOSE 3270/tcp
-EXPOSE 8038/tcp
+EXPOSE 3270 8038
+
 #
-# Set working directory and define the default entrypoint into the
-# container to luanch TK4- when starting the container
-VOLUME $TK5/dasd.usr
-WORKDIR $TK5
-ENTRYPOINT [ "./mvs" ]
+# Start Hercules
+#
+CMD /usr/bin/hercules -f $HERCULES_CNF -r $HERCULES_RC 2\u003e\u00261 | tee $HERCULES_LOG
